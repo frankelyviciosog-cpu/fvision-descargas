@@ -1,0 +1,39 @@
+name: Publicar instalador
+
+# Los instaladores de Fvision llegan a la rama "subida" en trozos de menos de 100 MB (el tope de GitHub por
+# archivo), con su versión y su huella. Aquí se arman, se comprueba que el archivo llegó entero y se publica
+# en Releases. Al terminar se borra la rama: en el repositorio solo quedan las publicaciones.
+on:
+  push:
+    branches: [subida]
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Armar, comprobar y publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd subida
+          version=$(tr -d '[:space:]' < VERSION)
+          case "$version" in ''|*[!0-9.]*) echo "Versión inválida"; exit 1;; esac
+          exe="FvisionSetup-$version.exe"
+          cat "$exe".parte-* > "$exe"
+          sha256sum -c SHA256
+          tag="v$version"
+          notas="Instalador de Fvision $version para Windows 10 y 11. Descarga $exe, ábrelo y sigue los pasos. Si Windows dice \"Windows protegió tu PC\", toca Más información y después Ejecutar de todas formas (el programa no tiene firma digital)."
+          if gh release view "$tag" > /dev/null 2>&1; then
+            gh release upload "$tag" "$exe" --clobber
+          else
+            gh release create "$tag" "$exe" --target main --title "Fvision $version" --notes "$notas"
+          fi
+      - name: Borrar la rama de subida
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: git push origin --delete subida

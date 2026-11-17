@@ -1,8 +1,10 @@
 name: Publicar instalador
 
-# Los instaladores de Fvision llegan a la rama "subida" en trozos de menos de 100 MB (el tope de GitHub por
-# archivo), con su versión y su huella. Aquí se arman, se comprueba que el archivo llegó entero y se publica
-# en Releases. Al terminar se borra la rama: en el repositorio solo quedan las publicaciones.
+# Los instaladores de Fvision llegan en trozos de menos de 100 MB (el tope de GitHub por archivo), con su
+# versión y su huella, en la carpeta subida/. Se suben de a un trozo a la rama "carga" (que no dispara nada)
+# y, cuando están todos, esa misma rama se empuja como "subida": ahí se arman, se comprueba que el archivo
+# llegó entero y se publica en Releases. Al terminar se borran las dos ramas: en el repositorio solo quedan
+# las publicaciones.
 on:
   push:
     branches: [subida]
@@ -33,7 +35,9 @@ jobs:
           else
             gh release create "$tag" "$exe" --target main --title "Fvision $version" --notes "$notas"
           fi
-      - name: Borrar la rama de subida
+      - name: Borrar las ramas de subida
         env:
           GH_TOKEN: ${{ github.token }}
-        run: git push origin --delete subida
+        run: |
+          git push origin --delete subida
+          git push origin --delete carga || echo "La rama carga ya no estaba"

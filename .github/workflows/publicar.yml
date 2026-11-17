@@ -8,12 +8,15 @@ name: Publicar instalador
 on:
   push:
     branches: [subida]
+  # A mano: solo borra las ramas de subida, si quedó alguna.
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   publicar:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,3 +44,16 @@ jobs:
         run: |
           git push origin --delete subida
           git push origin --delete carga || echo "La rama carga ya no estaba"
+
+  limpiar:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Borrar las ramas de subida que hayan quedado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git init -q vacio && cd vacio
+          for rama in subida carga; do
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" --delete "$rama" || echo "La rama $rama ya no estaba"
+          done
